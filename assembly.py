@@ -90,7 +90,7 @@ class Assembly(object):
 	
 	
 	def __get_plane(self, dim, plane, boundary_type = None, name = "", eps = None):
-		'''Shorthand for pwr.functions.get_plane() specific to this assembly'''
+		"""Shorthand for pwr.functions.get_plane() specific to this assembly"""
 		if not boundary_type:
 			boundary_type = "transmission"
 		if not eps:
@@ -100,8 +100,8 @@ class Assembly(object):
 	
 	
 	def __prebuild(self):
-		'''Check that all the required properties are there.
-		If not, error out. Otherwise, do a few operations prior to build().'''
+		"""Check that all the required properties are there.
+		If not, error out. Otherwise, do a few operations prior to build()."""
 		
 		if not self.name:
 			self.name = self.key
@@ -126,7 +126,9 @@ class Assembly(object):
 		assert (len(self.spacers) == len(self.spacer_mids)), \
 			"Error: number of entries in spacer_elevs must be len(spacers)"
 		
-		# Initialize the openmc list attributes
+		# TODO: If griddict not in lattice.__dict__  --> add it
+	
+	# Initialize the openmc list attributes
 		self.openmc_cells = []
 		self.openmc_surfaces = []
 		
@@ -162,10 +164,10 @@ class Assembly(object):
 	
 	
 	def build(self):
-		'''Construct the assembly from the ground up.
+		"""Construct the assembly from the ground up.
 		
 		Output:
-			instance of openmc.Universe'''
+			instance of openmc.Universe"""
 		
 		self.__prebuild()
 		
@@ -187,32 +189,25 @@ class Assembly(object):
 			s = self.__get_plane('z', z)
 			# See what lattice we are in
 			for i in range(len(self.lattices)):
-				#if z > self.lattice_elevs[i]:
-				if z <= self.lattice_elevs[i] and z > self.lattice_elevs[i-1]:
+				if self.lattice_elevs[i] >= z > self.lattice_elevs[i-1]:
 					break
 			lat = self.lattices[i-1]
 			# Check if there is a spacer grid
 			if self.spacer_mids:
 				#for g in range(len(self.spacer_mids)):
 				for g in range(len(self.spacer_elevs)):
-					#if z > self.spacer_mids[g]:
-					if z <= self.spacer_elevs[g] and z > self.spacer_elevs[g-1]:
+					if self.spacer_elevs[g] >= z > self.spacer_elevs[g-1]:
 						break
 				# Even numbers are bottoms, odds are top
 				grid = False
-				if (g-1) % 2 == 0 and z > min(self.spacer_elevs):
+				if g % 2 and z > min(self.spacer_elevs):
 					# Then the last one was a bottom: a grid is present
 					grid = self.spacers[int(g/2)]
 				# OK--now we know what the current lattice is, and whether there's a grid here.
 				if grid:
-					if grid.key in lat.griddict:
-						# Then this one has been done before
-						lat = lat.griddict[grid.key]
-					else:
-						# We need to add the spacer grid to this one, and then add it to the index
+					if grid.key not in lat.griddict:
 						lat.griddict[grid.key] = pwr.add_grid_to(lat, grid, self.counter, self.openmc_surfaces)
-						lat = lat.griddict[grid.key]
-						print("Unable to find", lat.name, "; generated.")#debug
+					lat = lat.griddict[grid.key]
 				
 			# Now, we have the current lattice, for the correct level, with or with a spacer
 			# grid as appropriate. Time to make the layer.
