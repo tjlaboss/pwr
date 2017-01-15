@@ -119,6 +119,9 @@ def add_spacer_to(pincell, pitch, t, material, counter, surflist):# = []):
 	new_pin = openmc.Universe(counter.add_universe(), name = pincell.name + " gridded")
 	# Add all of the original cells except the old mod cell
 	for i in range(len(orig_list) - 1):
+		new_cell = duplicate(orig_list[i], counter)
+		new_cell.name += " (gridded)"
+		new_pin.add_cell(new_cell)
 		new_pin.add_cell(orig_list[i])
 	new_pin.add_cell(mod_cell) 	# the new mod cell
 	new_pin.add_cell(spacer)
