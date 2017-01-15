@@ -148,7 +148,7 @@ def add_grid_to(lattice, spacer, counter, surflist = []):
 	new_universes = [[None,]*n,]*n
 	
 	for j in range(n):
-		row = new_universes[j]
+		row = [None, ] * n
 		for i in range(n):
 			old_cell = lattice.universes[j][i]
 			key = str(old_cell.id)
