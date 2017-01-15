@@ -126,7 +126,9 @@ class Assembly(object):
 		assert (len(self.spacers) == len(self.spacer_mids)), \
 			"Error: number of entries in spacer_elevs must be len(spacers)"
 		
-		# Initialize the openmc list attributes
+		# TODO: If griddict not in lattice.__dict__  --> add it
+	
+	# Initialize the openmc list attributes
 		self.openmc_cells = []
 		self.openmc_surfaces = []
 		
