@@ -12,8 +12,8 @@ class Baffle(object):
 		gap:	    thickness of gap (cm) between the outside assembly
 					(including the assembly gap) and the baffle itself
 		"""
-	def __init__(self, mat, thick, gap):
-		self.mat = mat
+	def __init__(self, material, thick, gap):
+		self.material = material
 		self.thick = thick
 		self.gap = gap
 	def __str__(self):
@@ -429,9 +429,33 @@ def get_openmc_baffle(baf, cmap, apitch, openmc_surfaces, count):
 if __name__ == '__main__':
 	print("This is a test of the new Baffle module.")
 	
+	counter = pwr.Counter(0, 0, 0, 0)
 	
+	# The actual material is irrelevant for this test
+	h1 = openmc.Material(counter.add_material())
+	h1.add_nuclide("H1", 1.0)
+	h1.set_density("g/cc", 1)
 	
+	core_baffle = Baffle(gap = 0.1, material = h1, thick = 1.0)
+	smap = [[0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0],
+			[0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0],
+			[0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0],
+			[0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0],
+			[1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
+			[1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
+			[1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
+			[1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
+			[1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
+			[1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
+			[0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0],
+			[0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0],
+			[0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0],
+			[0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0]]
 	
+	openmc_baffle = get_openmc_baffle(baf = core_baffle, cmap = smap, apitch = 17,
+	                                  openmc_surfaces = [], count = counter)
+	
+	print(openmc_baffle)
 	
 	
 	
