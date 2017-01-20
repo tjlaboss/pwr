@@ -6,10 +6,10 @@ import openmc
 
 class Baffle(object):
 	"""Inputs:
-		mat:	instance of Material
-		thick:	thickness of baffle (cm)
-		gap:	thickness of gap (cm) between the outside assembly
-				(including the assembly gap) and the baffle itself
+		material:	instance of openmc.Material
+		thick:	    thickness of baffle (cm)
+		gap:	    thickness of gap (cm) between the outside assembly
+					(including the assembly gap) and the baffle itself
 		"""
 	def __init__(self, mat, thick, gap):
 		self.mat = mat
@@ -19,8 +19,17 @@ class Baffle(object):
 		return "Baffle (" + self.thick + " cm thick)"
 
 
-def get_openmc_baffle(self):
+def get_openmc_baffle(baf, cmap, apitch, counter):
 	"""Create the cells and surfaces for the core baffle.
+	
+	Inputs:
+		baf:            instance of Baffle
+		cmap:           list of lists; square map of the core layout.
+						Locations without assemblies should be empty,
+						0, or otherwise False.
+						(Currently only works for square cores.)
+		apitch:         float; assembly pitch (cm)
+		count:          instance of Counter
 
 	Outputs:
 		baffle_cells:	instance of openmc.Cell describing the baffle plates
@@ -34,18 +43,15 @@ def get_openmc_baffle(self):
 	core baffle will produce regions in excess of the default maximum region length. You
 	will need to change this for yourself in the Fortran source code (constants.f90).
 	"""
-	baf = self.core.baffle  # instance of objects.Baffle
-	pitch = self.core.pitch  # assembly pitch
+	core_size = len(cmap)
+	n = core_size - 1
 	
 	# Useful distances
-	d0 = pitch / 2.0  # dist (from center of asmbly) to edge of asmbly
+	d0 = apitch / 2.0  # dist (from center of asmbly) to edge of asmbly
 	d1 = d0 + baf.gap  # dist to inside of baffle
 	d2 = d1 + baf.thick  # dist to outside of baffle
 	d3 = d0 - baf.gap  # dist to inside of next baffle
-	width = self.core.size * self.core.pitch / 2.0  # dist from center of core to center of asmbly
-	
-	cmap = self.core.square_maps("s")
-	n = self.core.size - 1
+	width = core_size * apitch / 2.0  # dist from center of core to center of asmbly
 	
 	# Unite all individual regions with the Master Region
 	master_region = openmc.Union()
@@ -56,8 +62,8 @@ def get_openmc_baffle(self):
 		for i in range(1, n):
 			if cmap[j][i]:
 				# Positions of surfaces
-				x = (i + 0.5) * pitch - width
-				y = width - (j + 0.5) * pitch
+				x = (i + 0.5) * apitch - width
+				y = width - (j + 0.5) * apitch
 				
 				north = cmap[j - 1][i]
 				south = cmap[j + 1][i]
@@ -149,14 +155,14 @@ def get_openmc_baffle(self):
 					master_region.nodes.append(south_region)
 		
 		# Edge cases
-		x = (j + 0.5) * pitch - width
-		y = width - (j + 0.5) * pitch
+		x = (j + 0.5) * apitch - width
+		y = width - (j + 0.5) * apitch
 		
 		# West edge
 		if cmap[j][0]:
 			north = cmap[j - 1][0]
 			south = cmap[j + 1][0]
-			xx = -(width - 0.5 * pitch)
+			xx = -(width - 0.5 * apitch)
 			x_left = xx - d2
 			x_right = xx - d1
 			y_bot = y - d2
@@ -188,7 +194,7 @@ def get_openmc_baffle(self):
 		if cmap[j][n]:
 			north = cmap[j - 1][n]
 			south = cmap[j + 1][n]
-			xx = +(width - 0.5 * pitch)
+			xx = +(width - 0.5 * apitch)
 			x_left = xx + d1
 			x_right = xx + d2
 			y_bot = y - d2
@@ -219,7 +225,7 @@ def get_openmc_baffle(self):
 		if cmap[0][j]:
 			east = cmap[0][j + 1]
 			west = cmap[0][j - 1]
-			yy = +(width - 0.5 * pitch)
+			yy = +(width - 0.5 * apitch)
 			x_left = x - d2
 			x_right = x + d2
 			y_bot = yy + d1
@@ -250,7 +256,7 @@ def get_openmc_baffle(self):
 		if cmap[n][j]:
 			east = cmap[n][j + 1]
 			west = cmap[n][j - 1]
-			yy = -(width - 0.5 * pitch)
+			yy = -(width - 0.5 * apitch)
 			x_left = x - d2
 			x_right = x + d2
 			y_bot = yy - d2
@@ -282,7 +288,7 @@ def get_openmc_baffle(self):
 	# Corner cases (UNTESTED)
 	# Top left
 	if cmap[0][0]:
-		x = -(width - 0.5 * pitch)
+		x = -(width - 0.5 * apitch)
 		y = -x
 		x_left = x - d2
 		y_top = y + d2
@@ -305,7 +311,7 @@ def get_openmc_baffle(self):
 	
 	# Top right
 	if cmap[0][n]:
-		x = +(width - 0.5 * pitch)
+		x = +(width - 0.5 * apitch)
 		y = +x
 		x_right = x + d2
 		y_top = y + d2
@@ -328,7 +334,7 @@ def get_openmc_baffle(self):
 	
 	# Bottom right
 	if cmap[n][n]:
-		x = +(width - 0.5 * pitch)
+		x = +(width - 0.5 * apitch)
 		y = -x
 		x_right = x + d2
 		y_bot = y - d2
@@ -351,7 +357,7 @@ def get_openmc_baffle(self):
 	
 	# Bottom left
 	if cmap[n][0]:
-		x = -(width - 0.5 * pitch)
+		x = -(width - 0.5 * apitch)
 		y = +x
 		x_left = x - d2
 		y_bot = y - d2
@@ -372,7 +378,11 @@ def get_openmc_baffle(self):
 		south_region = (+left & -right & +bot & -top)
 		master_region.nodes.append(south_region)
 	
-	# Set the baffle material, cell, etc.
-	baffle_cell = openmc.Cell(self.__counter(CELL), "Baffle", self.get_openmc_material(baf.mat), master_region)
+	
+	# Note: This seems to require the 'count.add_cell()' argument to avoid
+	# overwriting existing cell numbers, sometimes.
+	baffle_cell = openmc.Cell(count.add_cell(), name = "Baffle")
+	baffle_cell.fill = baf.material
+	baffle_cell.region = master_region
 	
 	return baffle_cell
