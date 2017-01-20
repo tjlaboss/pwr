@@ -3,6 +3,7 @@
 # Function and class for generating a PWR baffle
 
 import openmc
+import pwr.functions
 
 class Baffle(object):
 	"""Inputs:
@@ -19,17 +20,54 @@ class Baffle(object):
 		return "Baffle (" + self.thick + " cm thick)"
 
 
-def get_openmc_baffle(baf, cmap, apitch, counter):
+
+def get_xyz_planes(openmc_surfaces, count, x0s = (), y0s = (), z0s = (), rd = 5):
+	"""
+	Inputs:
+		openmc_surfaces:
+					list of existing instances of openmc.Surface (or openmc.Plane)
+					 to compare against, to avoid duplicates.
+		count:      instance of pwr.Counter
+		x0s:		list or tuple of x0's to check for; default is empty tuple
+		y0s:		same for y0's
+		z0s:		same for z0's
+		rd:			integer; number of digits to round to when comparing surface
+					equality. Default is 5
+	Outputs:
+		xlist:		list of instances of openmc.XPlane, of length len(x0s)
+		ylist:		ditto, for openmc.YPlane, y0s
+		zlist:		ditto, for openmc.ZPlane, z0s
+	"""
+	nx = len(x0s)
+	ny = len(y0s)
+	nz = len(z0s)
+	xlist = [None, ] * nx
+	ylist = [None, ] * ny
+	zlist = [None, ] * ny
+	
+	for i in range(nx):
+		xlist[i] = pwr.get_plane(openmc_surfaces, count, 'x', x0s[i], eps = rd)
+	for i in range(ny):
+		ylist[i] = pwr.get_plane(openmc_surfaces, count, 'y', y0s[i], eps = rd)
+	for i in range(nz):
+		zlist[i] = pwr.get_plane(openmc_surfaces, count, 'z', z0s[i], eps = rd)
+	
+	return xlist, ylist, zlist
+
+
+def get_openmc_baffle(baf, cmap, apitch, openmc_surfaces, count):
 	"""Create the cells and surfaces for the core baffle.
 	
 	Inputs:
-		baf:            instance of Baffle
-		cmap:           list of lists; square map of the core layout.
-						Locations without assemblies should be empty,
-						0, or otherwise False.
-						(Currently only works for square cores.)
-		apitch:         float; assembly pitch (cm)
-		count:          instance of Counter
+		baf:                instance of Baffle
+		cmap:               list of lists; square map of the core layout.
+							 Locations without assemblies should be empty,
+							 0, or otherwise False.
+							 (Currently only works for square cores.)
+		apitch:             float; assembly pitch (cm)
+		openmc_surfaces:    list of known instances of openmc.Surface. Will be
+							 modified as new surfaces are created.
+		count:              instance of pwr.Counter
 
 	Outputs:
 		baffle_cells:	instance of openmc.Cell describing the baffle plates
@@ -89,7 +127,7 @@ def get_openmc_baffle(baf, cmap, apitch, counter):
 							y_bot = y - d2
 					else:
 						y_bot = y - d2
-					(left, right), (bot, top) = self.__get_xyz_planes( \
+					(left, right), (bot, top) = get_xyz_planes(openmc_surfaces, count,
 						x0s = (x_left, x_right), y0s = (y_bot, y_top))[0:2]
 					west_region = (+left & -right & +bot & -top)
 					master_region.nodes.append(west_region)
@@ -109,7 +147,7 @@ def get_openmc_baffle(baf, cmap, apitch, counter):
 							y_bot = y - d2
 					else:
 						y_bot = y - d2
-					(left, right), (bot, top) = self.__get_xyz_planes( \
+					(left, right), (bot, top) = get_xyz_planes(openmc_surfaces, count,
 						x0s = (x_left, x_right), y0s = (y_bot, y_top))[0:2]
 					east_region = (+left & -right & +bot & -top)
 					master_region.nodes.append(east_region)
@@ -129,7 +167,7 @@ def get_openmc_baffle(baf, cmap, apitch, counter):
 						x_right = x + d3
 					else:
 						x_right = x + d2
-					(left, right), (bot, top) = self.__get_xyz_planes( \
+					(left, right), (bot, top) = get_xyz_planes(openmc_surfaces, count,
 						x0s = (x_left, x_right), y0s = (y_bot, y_top))[0:2]
 					north_region = (+left & -right & +bot & -top)
 					master_region.nodes.append(north_region)
@@ -149,7 +187,7 @@ def get_openmc_baffle(baf, cmap, apitch, counter):
 						x_right = x + d3
 					else:
 						x_right = x + d2
-					(left, right), (bot, top) = self.__get_xyz_planes( \
+					(left, right), (bot, top) = get_xyz_planes(openmc_surfaces, count,
 						x0s = (x_left, x_right), y0s = (y_bot, y_top))[0:2]
 					south_region = (+left & -right & +bot & -top)
 					master_region.nodes.append(south_region)
@@ -168,7 +206,7 @@ def get_openmc_baffle(baf, cmap, apitch, counter):
 			y_bot = y - d2
 			y_top = y + d2
 			
-			(left, right), (bot, top) = self.__get_xyz_planes( \
+			(left, right), (bot, top) = get_xyz_planes(openmc_surfaces, count,
 				x0s = (x_left, x_right), y0s = (y_bot, y_top))[0:2]
 			west_region = (+left & -right & +bot & -top)
 			master_region.nodes.append(west_region)
@@ -176,7 +214,7 @@ def get_openmc_baffle(baf, cmap, apitch, counter):
 			if not north:
 				y_bot = y + d1
 				x_right = xx + d3
-				(right,), (bot,) = self.__get_xyz_planes( \
+				(right,), (bot,) = get_xyz_planes(openmc_surfaces, count,
 					x0s = (x_right,), y0s = (y_bot,))[0:2]
 				north_region = (+left & -right & +bot & -top)
 			master_region.nodes.append(north_region)
@@ -185,7 +223,7 @@ def get_openmc_baffle(baf, cmap, apitch, counter):
 				y_bot = y - d2
 				y_top = y - d1
 				x_right = xx + d3
-				(right,), (bot, top) = self.__get_xyz_planes( \
+				(right,), (bot, top) = get_xyz_planes(openmc_surfaces, count,
 					x0s = (x_right,), y0s = (y_bot, y_top))[0:2]
 				south_region = (+left & -right & +bot & -top)
 				master_region.nodes.append(south_region)
@@ -199,7 +237,7 @@ def get_openmc_baffle(baf, cmap, apitch, counter):
 			x_right = xx + d2
 			y_bot = y - d2
 			y_top = y + d2
-			(left, right), (bot, top) = self.__get_xyz_planes( \
+			(left, right), (bot, top) = get_xyz_planes(openmc_surfaces, count,
 				x0s = (x_left, x_right), y0s = (y_bot, y_top))[0:2]
 			east_region = (+left & -right & +bot & -top)
 			master_region.nodes.append(east_region)
@@ -207,7 +245,7 @@ def get_openmc_baffle(baf, cmap, apitch, counter):
 			if not north:
 				y_bot = y + d1
 				x_left = xx - d3
-				(left,), (bot,) = self.__get_xyz_planes( \
+				(left,), (bot,) = get_xyz_planes(openmc_surfaces, count,
 					x0s = (x_left,), y0s = (y_bot,))[0:2]
 				north_region = (+left & -right & +bot & -top)
 			master_region.nodes.append(north_region)
@@ -216,7 +254,7 @@ def get_openmc_baffle(baf, cmap, apitch, counter):
 				y_bot = y - d2
 				y_top = y - d1
 				x_left = xx - d3
-				(left,), (bot, top) = self.__get_xyz_planes( \
+				(left,), (bot, top) = get_xyz_planes(openmc_surfaces, count,
 					x0s = (x_left,), y0s = (y_bot, y_top))[0:2]
 				south_region = (+left & -right & +bot & -top)
 				master_region.nodes.append(south_region)
@@ -230,7 +268,7 @@ def get_openmc_baffle(baf, cmap, apitch, counter):
 			x_right = x + d2
 			y_bot = yy + d1
 			y_top = yy + d2
-			(left, right), (bot, top) = self.__get_xyz_planes( \
+			(left, right), (bot, top) = get_xyz_planes(openmc_surfaces, count,
 				x0s = (x_left, x_right), y0s = (y_bot, y_top))[0:2]
 			north_region = (+left & -right & +bot & -top)
 			master_region.nodes.append(north_region)
@@ -238,7 +276,7 @@ def get_openmc_baffle(baf, cmap, apitch, counter):
 			if not west:
 				x_right = x - d1
 				y_bot = yy - d3
-				(right,), (bot,) = self.__get_xyz_planes( \
+				(right,), (bot,) = get_xyz_planes(openmc_surfaces, count,
 					x0s = (x_right,), y0s = (y_bot,))[0:2]
 				west_region = (+left & -right & +bot & -top)
 				master_region.nodes.append(west_region)
@@ -247,7 +285,7 @@ def get_openmc_baffle(baf, cmap, apitch, counter):
 				x_left = x + d1
 				x_right = x + d2
 				y_bot = yy - d3
-				(left, right), (bot, top) = self.__get_xyz_planes( \
+				(left, right), (bot, top) = get_xyz_planes(openmc_surfaces, count,
 					x0s = (x_left, x_right), y0s = (y_bot, y_top))[0:2]
 				east_region = (+left & -right & +bot & -top)
 				master_region.nodes.append(east_region)
@@ -261,7 +299,7 @@ def get_openmc_baffle(baf, cmap, apitch, counter):
 			x_right = x + d2
 			y_bot = yy - d2
 			y_top = yy - d1
-			(left, right), (bot, top) = self.__get_xyz_planes( \
+			(left, right), (bot, top) = get_xyz_planes(openmc_surfaces, count,
 				x0s = (x_left, x_right), y0s = (y_bot, y_top))[0:2]
 			south_region = (+left & -right & +bot & -top)
 			master_region.nodes.append(south_region)
@@ -269,7 +307,7 @@ def get_openmc_baffle(baf, cmap, apitch, counter):
 			if not west:
 				x_right = x - d1
 				y_top = yy + d3
-				(right,), (top,) = self.__get_xyz_planes( \
+				(right,), (top,) = get_xyz_planes(openmc_surfaces, count,
 					x0s = (x_right,), y0s = (y_top,))[0:2]
 				west_region = (+left & -right & +bot & -top)
 				master_region.nodes.append(west_region)
@@ -278,7 +316,7 @@ def get_openmc_baffle(baf, cmap, apitch, counter):
 				x_left = x + d1
 				x_right = x + d2
 				y_top = yy + d3
-				(left, right), (top,) = self.__get_xyz_planes( \
+				(left, right), (top,) = get_xyz_planes(openmc_surfaces, count,
 					x0s = (x_left, x_right), y0s = (y_top,))[0:2]
 				east_region = (+left & -right & +bot & -top)
 				master_region.nodes.append(east_region)
@@ -296,7 +334,7 @@ def get_openmc_baffle(baf, cmap, apitch, counter):
 		# West
 		x_right = x - d1
 		y_bot = y - d2
-		(left, right), (bot, top) = self.__get_xyz_planes( \
+		(left, right), (bot, top) = get_xyz_planes(openmc_surfaces, count,
 			x0s = (x_left, x_right), y0s = (y_bot, y_top))[0:2]
 		west_region = (+left & -right & +bot & -top)
 		master_region.nodes.append(west_region)
@@ -304,7 +342,7 @@ def get_openmc_baffle(baf, cmap, apitch, counter):
 		# North
 		x_right = x + d2
 		y_bot = y + d1
-		(right,), (bot,) = self.__get_xyz_planes( \
+		(right,), (bot,) = get_xyz_planes(openmc_surfaces, count,
 			x0s = (x_right,), y0s = (y_bot,))[0:2]
 		north_region = (+left & -right & +bot & -top)
 		master_region.nodes.append(north_region)
@@ -319,7 +357,7 @@ def get_openmc_baffle(baf, cmap, apitch, counter):
 		# East
 		x_left = x + d1
 		y_bot = y - d2
-		(left, right), (bot, top) = self.__get_xyz_planes( \
+		(left, right), (bot, top) = get_xyz_planes(openmc_surfaces, count,
 			x0s = (x_left, x_right), y0s = (y_bot, y_top))[0:2]
 		east_region = (+left & -right & +bot & -top)
 		master_region.nodes.append(east_region)
@@ -327,7 +365,7 @@ def get_openmc_baffle(baf, cmap, apitch, counter):
 		# North
 		x_left = x - d2
 		y_bot = y + d1
-		(left,), (bot,) = self.__get_xyz_planes( \
+		(left,), (bot,) = get_xyz_planes(openmc_surfaces, count,
 			x0s = (x_left,), y0s = (y_bot,))[0:2]
 		north_region = (+left & -right & +bot & -top)
 		master_region.nodes.append(north_region)
@@ -342,7 +380,7 @@ def get_openmc_baffle(baf, cmap, apitch, counter):
 		# East
 		x_left = x + d1
 		y_top = y + d2
-		(left, right), (bot, top) = self.__get_xyz_planes( \
+		(left, right), (bot, top) = get_xyz_planes(openmc_surfaces, count,
 			x0s = (x_left, x_right), y0s = (y_bot, y_top))[0:2]
 		east_region = (+left & -right & +bot & -top)
 		master_region.nodes.append(east_region)
@@ -350,7 +388,7 @@ def get_openmc_baffle(baf, cmap, apitch, counter):
 		# South
 		x_left = x - d2
 		y_top = y - d1
-		(left,), (top,) = self.__get_xyz_planes( \
+		(left,), (top,) = get_xyz_planes(openmc_surfaces, count,
 			x0s = (x_left,), y0s = (y_top,))[0:2]
 		south_region = (+left & -right & +bot & -top)
 		master_region.nodes.append(south_region)
@@ -365,7 +403,7 @@ def get_openmc_baffle(baf, cmap, apitch, counter):
 		# West
 		x_right = x - d1
 		y_top = y + d2
-		(left, right), (bot, top) = self.__get_xyz_planes( \
+		(left, right), (bot, top) = get_xyz_planes(openmc_surfaces, count,
 			x0s = (x_left, x_right), y0s = (y_bot, y_top))[0:2]
 		west_region = (+left & -right & +bot & -top)
 		master_region.nodes.append(west_region)
@@ -373,7 +411,7 @@ def get_openmc_baffle(baf, cmap, apitch, counter):
 		# South
 		x_right = x + d2
 		y_top = y - d1
-		(right,), (top,) = self.__get_xyz_planes( \
+		(right,), (top,) = get_xyz_planes(openmc_surfaces, count,
 			x0s = (x_right,), y0s = (y_top,))[0:2]
 		south_region = (+left & -right & +bot & -top)
 		master_region.nodes.append(south_region)
@@ -386,3 +424,17 @@ def get_openmc_baffle(baf, cmap, apitch, counter):
 	baffle_cell.region = master_region
 	
 	return baffle_cell
+
+
+if __name__ == '__main__':
+	print("This is a test of the new Baffle module.")
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
