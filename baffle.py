@@ -21,40 +21,6 @@ class Baffle(object):
 
 
 
-def get_xyz_planes(openmc_surfaces, count, x0s = (), y0s = (), z0s = (), rd = 5):
-	"""
-	Inputs:
-		openmc_surfaces:
-					list of existing instances of openmc.Surface (or openmc.Plane)
-					 to compare against, to avoid duplicates.
-		count:      instance of pwr.Counter
-		x0s:		list or tuple of x0's to check for; default is empty tuple
-		y0s:		same for y0's
-		z0s:		same for z0's
-		rd:			integer; number of digits to round to when comparing surface
-					equality. Default is 5
-	Outputs:
-		xlist:		list of instances of openmc.XPlane, of length len(x0s)
-		ylist:		ditto, for openmc.YPlane, y0s
-		zlist:		ditto, for openmc.ZPlane, z0s
-	"""
-	nx = len(x0s)
-	ny = len(y0s)
-	nz = len(z0s)
-	xlist = [None, ] * nx
-	ylist = [None, ] * ny
-	zlist = [None, ] * ny
-	
-	for i in range(nx):
-		xlist[i] = pwr.get_plane(openmc_surfaces, count, 'x', x0s[i], eps = rd)
-	for i in range(ny):
-		ylist[i] = pwr.get_plane(openmc_surfaces, count, 'y', y0s[i], eps = rd)
-	for i in range(nz):
-		zlist[i] = pwr.get_plane(openmc_surfaces, count, 'z', z0s[i], eps = rd)
-	
-	return xlist, ylist, zlist
-
-
 def get_openmc_baffle(baf, cmap, apitch, openmc_surfaces, count):
 	"""Create the cells and surfaces for the core baffle.
 	
