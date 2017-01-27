@@ -108,11 +108,11 @@ def get_xyz_planes(openmc_surfaces, count, x0s = (), y0s = (), z0s = (), rd = 5)
 	zlist = [None, ] * ny
 	
 	for i in range(nx):
-		xlist[i] = pwr.get_plane(openmc_surfaces, count, 'x', x0s[i], eps = rd)
+		xlist[i] = get_plane(openmc_surfaces, count, 'x', x0s[i], eps = rd)
 	for i in range(ny):
-		ylist[i] = pwr.get_plane(openmc_surfaces, count, 'y', y0s[i], eps = rd)
+		ylist[i] = get_plane(openmc_surfaces, count, 'y', y0s[i], eps = rd)
 	for i in range(nz):
-		zlist[i] = pwr.get_plane(openmc_surfaces, count, 'z', z0s[i], eps = rd)
+		zlist[i] = get_plane(openmc_surfaces, count, 'z', z0s[i], eps = rd)
 	
 	return xlist, ylist, zlist
 
