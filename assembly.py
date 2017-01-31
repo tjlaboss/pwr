@@ -6,7 +6,7 @@
 
 import openmc
 import pwr.spacergrid
-from pwr.functions import get_plane
+import pwr.functions
 
 
 
@@ -29,6 +29,12 @@ class Assembly(object):
 		walls:				list of instances of openmc.Surface: [min_x, max_x, min_y, max_y] 
 							Used to create the 2D region within the assembly.
 							[Will be generated automatically if not provided.]
+		xplanes:            dictionary of instances of openmc.XPlane, of the format {str(x0):xplane)
+	                        [Default: empty dictionary]
+		yplanes:            dictionary of instances of openmc.YPlane, of the format {str(y0):yplane)
+	                        [Default: empty dictionary]
+		zplanes:            dictionary of instances of openmc.ZPlane, of the format {str(z0):zplane)
+	                        [Default: empty dictionary]
 		lattices:			list of instances of openmc.RectLattice, in the axial order they appear in the assembly
 							(bottom -> top).
 							[Default: empty list]
@@ -73,6 +79,7 @@ class Assembly(object):
 
 	def __init__(self, 	key = "", 		name = "", 			universe_id = None,
 						pitch = 0.0, 	npins = 0,			walls = [],
+                        xplanes = {},   yplanes = {},       zplanes = {},
 						lattices = [], 	lattice_elevs = [],	spacers = [], 	spacer_mids = [],
 						lower_nozzle = None, 				upper_nozzle = None, 
 						z_active = [],	mod = None,			counter = None):
@@ -84,6 +91,7 @@ class Assembly(object):
 		self.spacers = spacers;				self.spacer_mids = spacer_mids
 		self.lower_nozzle = lower_nozzle;	self.upper_nozzle = upper_nozzle
 		self.walls = walls;
+		self.xplanes = xplanes;             self.yplanes = yplanes;         self.zplanes = zplanes
 		self.z_active = z_active
 		self.mod = mod
 		self.counter = counter
@@ -92,7 +100,7 @@ class Assembly(object):
 	def __str__(self):
 		return self.name
 	
-	
+	"""
 	def __get_plane(self, dim, plane, boundary_type = None, name = "", eps = None):
 		'''Shorthand for pwr.functions.get_plane() specific to this assembly'''
 		if not boundary_type:
@@ -100,7 +108,34 @@ class Assembly(object):
 		if not eps:
 			eps = 5
 		return get_plane(self.openmc_surfaces, self.counter, dim, plane, boundary_type, name, eps)
-		
+	"""
+	
+	
+	def __get_surface(self, dim, coeff, name = "", rd = 5):
+		"""Wrapper for pwr.get_surface()
+
+			Inputs:
+				:param dim:             str; dimension or surface type. Case insensitive.
+				:param coeff:           float; Value of the coefficent (such as x0 or R) for the surface type
+				:param name:            str; name to be assigned to the new surface (if one is generated)
+										[Default: empty string]
+				:param rd:              int; number of decimal places to round to. If the coefficient for a surface matches
+										up to 'rd' decimal places, they are considered equal.
+										[Default: 5]
+			Output:
+				:return openmc_surf:
+		"""
+		dim = dim.lower()
+		if dim in ("x", "xp", "xplane"):
+			surfdict = self.xplanes
+		elif dim in ("y", "yp", "yplane"):
+			surfdict = self.yplanes
+		elif dim in ("z", "zp", "zplane"):
+			surfdict = self.zplanes
+		else:
+			raise AssertionError(str(dim) + " is not an acceptable Surface type.")
+		openmc_surf = pwr.functions.get_surface(self.counter, surfdict, dim, coeff, name, rd)
+		return openmc_surf
 	
 	
 	def __prebuild(self):
@@ -109,7 +144,8 @@ class Assembly(object):
 		
 		if not self.name:
 			self.name = self.key
-		blank_allowable = ['universe_id', 'spacers', 'spacer_mids', 'upper_nozzle', 'walls', 'z_active']
+		blank_allowable = ['universe_id', 'spacers', 'spacer_mids', 'upper_nozzle', 'walls', 'z_active',
+		                   'xplanes', 'yplanes', 'zplanes']
 		if min(self.lattice_elevs) == 0:
 			blank_allowable.append('lower_nozzle')
 		
@@ -161,12 +197,12 @@ class Assembly(object):
 			[min_x, max_x, min_y, max_y] = self.walls
 		else:
 			half = self.pitch*self.npins/2.0
-			min_x = self.__get_plane('x', -half, name = self.name + ' - min_x') 
-			max_x = self.__get_plane('x', +half, name = self.name + ' - max_x') 
-			min_y = self.__get_plane('y', -half, name = self.name + ' - min_y') 
-			max_y = self.__get_plane('y', +half, name = self.name + ' - max_y') 
+			min_x = self.__get_surface('xplane', -half, name = self.name + ' - min_x')
+			max_x = self.__get_surface('xplane', +half, name = self.name + ' - max_x')
+			min_y = self.__get_surface('yplane', -half, name = self.name + ' - min_y')
+			max_y = self.__get_surface('yplane', +half, name = self.name + ' - max_y')
 			self.walls = [min_x, max_x, min_y, max_y]
-		self.openmc_surfaces = [min_x, max_x, min_y, max_y]
+		#self.openmc_surfaces = [min_x, max_x, min_y, max_y]
 		self.wall_region = openmc.Intersection(+min_x & +min_y & -max_x & -max_y)
 	
 	
@@ -185,7 +221,7 @@ class Assembly(object):
 		
 		if self.lower_nozzle:
 			lnoz = openmc.Cell(self.counter.add_cell(), "lower nozzle")
-			nozzle_top = self.__get_plane('z', self.lower_nozzle.height)
+			nozzle_top = self.__get_surface('zplane', self.lower_nozzle.height)
 			lnoz.region = (self.wall_region & +last_s & -nozzle_top)
 			lnoz.fill = self.lower_nozzle.material
 			self.openmc_cells.append(lnoz)
@@ -193,7 +229,7 @@ class Assembly(object):
 		
 		
 		for z in self.all_elevs[1:]:
-			s = self.__get_plane('z', z)
+			s = self.__get_surface('zplane', z)
 			# See what lattice we are in
 			for i in range(len(self.lattices)):
 				if z <= self.lattice_elevs[i] and z > self.lattice_elevs[i-1]:
@@ -230,7 +266,7 @@ class Assembly(object):
 		# Add the top nozzle if necessary:
 		if self.upper_nozzle:
 			unoz = openmc.Cell(self.counter.add_cell(), "upper nozzle")
-			nozzle_top = self.__get_plane('z', last_s.z0 + self.upper_nozzle.height)
+			nozzle_top = self.__get_surface('z', last_s.z0 + self.upper_nozzle.height)
 			unoz.region = (self.wall_region & +last_s & -nozzle_top)
 			unoz.fill = self.upper_nozzle.material
 			self.openmc_cells.append(unoz)
