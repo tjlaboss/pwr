@@ -235,7 +235,8 @@ class Assembly(object):
 				if grid:
 					if grid.key not in lat.griddict:
 						# We need to add the spacer grid to this one, and then add it to the index
-						lat.griddict[grid.key] = pwr.add_grid_to(lat, grid, self.counter, self.openmc_surfaces)
+						lat.griddict[grid.key] = pwr.add_grid_to(lat, grid, self.counter,
+						                                         self.xplanes, self.yplanes)
 					lat = lat.griddict[grid.key]
 				
 			# Now, we have the current lattice, for the correct level, with or with a spacer
