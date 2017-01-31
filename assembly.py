@@ -68,7 +68,6 @@ class Assembly(object):
 		spacer_elevs:		list of the elevations of the tops/bottoms of all spacer grids
 		all_elevs:			list of all axial elevations, created when (lattice_elevs + spacer_elevs)
 							have been concatenated, sorted, and checked for duplicates
-		openmc_surfs:		list of instances of openmc.Surface used in the construction of this assembly
 		openmc_cells:		list of all instances of openmc.Cell used in the construction of this assembly
 		gridded_pincells:	dictionary of pincells which have a gridded version, in the following format:
 							{'orig. universe id': gridded instance of openmc.Universe}
