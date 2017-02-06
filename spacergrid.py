@@ -162,11 +162,8 @@ def add_grid_to(lattice, spacer, counter, xplanes = {}, yplanes = {}):
 	for j in range(n):
 		for i in range(n):
 			old_cell = lattice.universes[j][i]
-			#key = str(old_cell.id)
 			gkey = spacer.key
-			print(gkey, old_cell.griddict) #debug
 			if gkey in old_cell.griddict:
-				#new_cell = old_cell.griddict[key]
 				new_cell = old_cell.griddict[gkey]
 			else:
 				new_cell = add_spacer_to(old_cell, pitch, spacer.thickness, spacer.material,

@@ -231,8 +231,6 @@ class Assembly(object):
 					grid = self.spacers[int(g/2)]
 				# OK--now we know what the current lattice is, and whether there's a grid here.
 				if grid:
-					#debug
-					print("z =", z, "\t", grid, grid.material.name)
 					if grid.key not in lat.griddict:
 						# We need to add the spacer grid to this one, and then add it to the index
 						lat.griddict[grid.key] = pwr.add_grid_to(lat, grid, self.counter,
