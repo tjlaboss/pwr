@@ -1,12 +1,12 @@
 # Neutron Pad
 #
-# Class and functions for a PWR neutron pad
+# Class and functions for PWR neutron pads
 
 import openmc
 import math
 
 
-# Simple functions for the necessary angles
+# Simple functions for the necessary angles/coefficients
 def phi(th, radians = True):
 	"""Angle on the XY plane at which the normal vector to a plane will be
 	
@@ -66,18 +66,18 @@ class Neutron_Pads(object):
 		:param angle:       float (degrees); angle from the x-axis at which the first pad starts
 							[Default: 45]
 		:param counter:     instance of pwr.Counter for surface and cell numbers.
-							[optional--if not supplied, auto surface/cell id's will be assigned]
+							[optional--if not supplied, auto surface/cell ids will be assigned]
 	
 	Other parameters:
 		:param material:    pad_mat; instance of openmc.Material
 		:param mod:         mod_mat; instance of openmc.Material
 		:param cells:       list of instances of openmc.Cell making up the neutron pad
 							layer of the reactor vessel.
-							[Empty until Neutron_Pads.generate_cells() is executed.]
+							[Empty until Neutron_Pads.get_cells() is executed.]
 		:param planes:      list of instances of openmc.Plane created during the generation
 		                    of the neutron pad
-		                    [Empty until Neutron_Pads.generate_cells() is executed.]
-        :param generated:   Boolean; whether or not generate_cells() has been executed yet.
+		                    [Empty until Neutron_Pads.get_cells() is executed.]
+        :param generated:   Boolean; whether or not get_cells() has been executed yet.
 	"""
 	def __init__(self, region, pad_mat, mod_mat,
                 npads = 4, arc_length = 32, angle = 45, counter = None):
