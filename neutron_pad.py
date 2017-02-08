@@ -1,6 +1,51 @@
 # Neutron Pad
 #
-# Class for a PWR neutron pad
+# Class and functions for a PWR neutron pad
+
+import math
+
+
+# Simple functions for the necessary angles
+def phi(th, radians = True):
+	"""Angle on the XY plane at which the normal vector to a plane will be
+	
+	Inputs:
+		:param th:          float; angle (degrees) of the plane itself on the XY plane
+		:param radians:     Boolean; whether to return the answer in radians. If false,
+							the answer will be returned in degrees.
+							[Default: True]
+	Output:
+		:return angle:      float; angle (in radians, or degrees if radians == False)
+	"""
+	angle = th * math.pi/180 - math.pi/2
+	if radians:
+		return angle
+	else:
+		return angle * 180 / math.pi
+
+
+def B(th):
+	"""Coefficient 'A' for a plane equation
+
+		Inputs:
+			:param th:          float; angle (degrees) of the plane itself on the XY plane
+		Output:
+			:return A:          float
+		"""
+	return math.sin(phi(th))
+	
+	
+def B(th):
+	"""Coefficient 'B' for a plane equation
+
+		Inputs:
+			:param th:          float; angle (degrees) of the plane itself on the XY plane
+		Output:
+			:return B:          float
+		"""
+	B = math.cos(phi(th))
+	return B
+
 
 class Pad(object):
 	"""Neutron pad as found in the reactor vessel of a PWR.
@@ -56,3 +101,4 @@ class Pad(object):
 		rep += "\n\tArc length: " + str(self.arc_length) + " degrees"
 		rep += "\n\tStarting angle: " + str(self.angle) + " degrees"
 		return rep
+	
