@@ -2,6 +2,7 @@
 #
 # Class and functions for a PWR neutron pad
 
+import openmc
 import math
 
 
@@ -47,14 +48,14 @@ def B(th):
 	return B
 
 
-class Pad(object):
-	"""Neutron pad as found in the reactor vessel of a PWR.
+class Neutron_Pads(object):
+	"""Neutron pads as found in the reactor vessel of a PWR.
 	
 	Inputs:
-		:param s_out:       instance of openmc.ZCylinder marking the outer radius
-		:param s_in:        instance of openmc.ZCylinder marking the inner radius
-		:param s_bot:       instance of openmc.ZPlane marking the bottom of the vessel
-		:param s_top:       instance of openmc.ZPlane marking the top of the vessel
+		:param region:      instance of openmc.Intersection defining the region in which the
+							neutron pads will exist. This should be an intersection of two
+							ZCylinders (inner and outer radius). If 3D, the region should also
+							intersect with two ZPlanes (bottom and top).
 		:param pad_mat:     instance of openmc.Material that the neutron pad is made of
 		:param mod_mat:     instance of openmc.Material that the space between the
 							neutron pads is filled with (usually moderator)
@@ -72,27 +73,25 @@ class Pad(object):
 		:param mod:         mod_mat; instance of openmc.Material
 		:param cells:       list of instances of openmc.Cell making up the neutron pad
 							layer of the reactor vessel.
-							[Empty until Pad.generate_cells() is executed.]
+							[Empty until Neutron_Pads.generate_cells() is executed.]
 		:param planes:      list of instances of openmc.Plane created during the generation
 		                    of the neutron pad
-		                    [Empty until Pad.generate_cells() is executed.]
+		                    [Empty until Neutron_Pads.generate_cells() is executed.]
         :param generated:   Boolean; whether or not generate_cells() has been executed yet.
 	"""
-	def __init__(self, s_out, s_in, s_bot, s_top, pad_mat, mod_mat,
-                       npads = 4, arc_length = 32, angle = 45, counter = None):
-		self.s_out = s_out
-		self.s_in = s_in
-		self.s_bot = s_bot
-		self.s_top = s_top
+	def __init__(self, region, pad_mat, mod_mat,
+                npads = 4, arc_length = 32, angle = 45, counter = None):
+		assert arc_length * npads <= 360, "The combined arclength must be less than 360 degrees."
+		self.region = region
 		self.material = pad_mat
 		self.mod = mod_mat
 		self.npads = npads
-		self.arc_length = 32
-		self.angle = 45
+		self.arc_length = arc_length
+		self.angle = angle
+		self.counter = counter
 		
 		self.cells = []
 		self.planes = []
-		self.counter = counter
 		self.generated = False
 	
 	def __str__(self):
@@ -100,5 +99,22 @@ class Pad(object):
 		rep += "\n\t" + str(self.npads) + " pads"
 		rep += "\n\tArc length: " + str(self.arc_length) + " degrees"
 		rep += "\n\tStarting angle: " + str(self.angle) + " degrees"
+		if self.generated:
+			rep += "\n\tThese neutron pads have been generated."
+		else:
+			rep += "\n\tThe neutron pads have NOT been generated."
 		return rep
 	
+	def get_cells(self):
+		"""Get the cells and planes necessary for modeling these neutron pads in openmc.
+		If the required cells and surfaces exist, return them. If not, instantiate them.
+		
+		Output:
+			:return cells:    list of the cells generated
+		"""
+		if not self.generated:
+			# Write this function
+			self.generated = True
+		
+		return self.cells
+
