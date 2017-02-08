@@ -25,7 +25,7 @@ def phi(th, radians = True):
 		return angle * 180 / math.pi
 
 
-def B(th):
+def a(th):
 	"""Coefficient 'A' for a plane equation
 
 		Inputs:
@@ -36,7 +36,7 @@ def B(th):
 	return math.sin(phi(th))
 	
 	
-def B(th):
+def b(th):
 	"""Coefficient 'B' for a plane equation
 
 		Inputs:
@@ -110,10 +110,52 @@ class Neutron_Pads(object):
 		If the required cells and surfaces exist, return them. If not, instantiate them.
 		
 		Output:
-			:return cells:    list of the cells generated
+			:return cells:    list of the instances of openmc.Cell making up the pads
 		"""
 		if not self.generated:
-			# Write this function
+			theta = 360 / self.npads
+			p2 = None   # Placeholder for the last surface used
+			for i in range(self.npads):
+				name = "Neutron pad " + str(i + 1)
+				th0 = self.angle + i * theta - self.arc_length / 2.0
+				th1 = th0 + self.arc_length
+				# Define the surfaces bounding the i^th pad
+				if self.counter:
+					if p2:
+						p0 = p2
+					else:
+						p0 = openmc.Plane(self.counter.add_surface(), A = a(th0), B = b(th0))
+						self.planes.append(p0)
+					p1 = openmc.Plane(self.counter.add_surface(), A = a(th1), B = b(th1))
+				else:
+					if p2:
+						p0 = p2
+					else:
+						p0 = openmc.Plane(A = a(th0), B = b(th0))
+						self.planes.append(p0)
+					p1 = openmc.Plane(A = a(th1), B = b(th1))
+				self.planes.append(p1)
+				
+				# Create the cell for the i^th pad itself
+				if self.counter:
+					new_pad = openmc.Cell(self.counter.add_cell(), name)
+				else:
+					new_pad = openmc.Cell(name = name)
+				new_pad.region = self.region & +p1 & -p0
+				new_pad.fill = self.material
+				self.cells.append(new_pad)
+				# Create the cell between this and the next pad
+				th2 = th0 + theta
+				if self.counter:
+					p2 = openmc.Plane(self.counter.add_surface(), A = a(th2), B = b(th2))
+					new_space = openmc.Cell(self.counter.add_cell())
+				else:
+					p2 = openmc.Plane(A = a(th2), B = b(th2))
+					new_space = openmc.Cell()
+				new_space.region = self.region & +p2 & -p1
+				new_space.fill = self.mod
+				self.cells.append(new_space)
+			# And we're done
 			self.generated = True
 		
 		return self.cells
