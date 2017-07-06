@@ -166,11 +166,68 @@ class Mesh_Group(object):
 	
 	def build_group(self):
 		"""Use the `nzs` and `dzs` attributes to autobuild the mesh group"""
-		assert self._nzs, "Mesh_group.nzs has not been set."
-		assert self._dzs, "Mesh_group.dzs has not been set."
+		self.__assert_nzs_dzs()
 		for i in range(self.n):
 			self.add_mesh(nz = self._nzs[i], dz = self._dzs[i])
 	
+	
+	# Post-processing methods
+	def get_axial_power(self, state):
+		"""Get the axial power profile, suitable for plotting
+		
+		Parameters:
+		-----------
+		state:      openmc.StatePoint with this Mesh_Group's tallies
+		
+		Returns:
+		--------
+		xlist:      array of x-values (power), normalized to 1
+		zlist:      array of z-values (height), in cm
+		"""
+		self.__assert_nzs_dzs()
+		zlist = np.zeros(sum(self.nzs))
+		xlist = np.zeros(sum(self.nzs))
+		z = 0
+		k = 0
+		for i in range(self.n):
+			nz = self._nzs[i]
+			dz = self._dzs[i]
+			talvalsi = state.get_tally(id = i + 1).get_values()
+			talvalsi.shape = (self._nx, self._ny, nz)
+			for j in range(nz):
+				z += dz
+				zlist[k] = z
+				xlist[k] = talvalsi[:, :, j].sum()/dz
+				k += 1
+		
+		xlist /= xlist.mean()
+		return xlist, zlist
+		
+
+def get_mesh_group_from_lattice(lattice, z0 = None):
+	"""Populate a Mesh_Group() instance with a lattice's
+	size, pitch, and lower left.
+	
+	Parameters:
+	-----------
+	lattice:        instance of openmc.RectLattice to use as a base
+	z0:             float; z-height (cm) to use as the start of the
+					mesh group, if different the lattice's lower_left
+					[Default: None]
+	
+	Returns:
+	--------
+	new_group:      instance of Mesh_Group
+	"""
+	p = lattice.pitch
+	nx = lattice.shape[0]
+	ny = lattice.shape[1]
+	if z0 is None:
+		ll = deepcopy(lattice.lower_left)
+	else:
+		ll = (lattice.lower_left[0], lattice.lower_left[1], z0)
+	new_group = Mesh_Group(p, nx, ny, ll)
+	return new_group
 
 
 # Test
