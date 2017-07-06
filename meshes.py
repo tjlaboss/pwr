@@ -7,6 +7,7 @@ import numpy as np
 
 _len_err_str = "The length of `nzs` must match the length of `dzs`."
 
+
 class MeshError(Exception):
 	""" Class for errors involving mesh structure. """
 	pass
@@ -97,7 +98,6 @@ class Mesh_Group(object):
 	def mesh_filters(self):
 		return self._mesh_filters
 	
-	
 	@nzs.setter
 	def nzs(self, nzs_in):
 		if self._dzs is not None:
@@ -111,11 +111,11 @@ class Mesh_Group(object):
 			if len(dzs_in) != len(self._nzs):
 				raise IndexError(_len_err_str)
 		self._dzs = dzs_in
-
+	
 	def __assert_nzs_dzs(self):
 		assert self._nzs.any(), "Mesh_group.nzs has not been set. Cannot get profile."
 		assert self._dzs.any(), "Mesh_group.dzs has not been set. Cannot get profile."
-
+	
 	def add_mesh(self, z1 = None, nz = None, dz = None):
 		"""Add a mesh to the group. You must supply two of the
 		three parameters. If all three are supplied,
@@ -145,7 +145,7 @@ class Mesh_Group(object):
 				delta_z = z1 - self._z
 				errstr = "Cannot cut {delta_z} cm into slices of {dz} cm.".format(**locals())
 				raise MeshError(errstr)
-			
+		
 		new_mesh = openmc.Mesh(self.id0)
 		new_mesh.type = "regular"
 		new_mesh.lower_left = (self.x0, self.y0, self._z)
@@ -163,13 +163,11 @@ class Mesh_Group(object):
 		self._id0 += 1
 		self._z = z1
 	
-	
 	def build_group(self):
 		"""Use the `nzs` and `dzs` attributes to autobuild the mesh group"""
 		self.__assert_nzs_dzs()
 		for i in range(self.n):
 			self.add_mesh(nz = self._nzs[i], dz = self._dzs[i])
-	
 	
 	# Post-processing methods
 	def get_axial_power(self, state, eps = 0):
@@ -177,8 +175,9 @@ class Mesh_Group(object):
 		
 		Parameters:
 		-----------
-		state:      openmc.StatePoint with this Mesh_Group's tallies
+		state:      openmc.StatePoint with this Mesh_Group's tally results
 		eps:        tolerance for a tally to be considered 0 or NaN
+					[Default: 0]
 		
 		Returns:
 		--------
@@ -205,8 +204,37 @@ class Mesh_Group(object):
 		xlist /= np.nanmean(xlist)
 		return xlist, zlist
 	
-	
+	def get_radial_power(self, state, zval = None, tally_id = None,
+	                     index = None, tally_total = False, eps = 0):
+		"""Get the radial power profile
 		
+		You must specify `zval`, `index`, or `tally_total`.
+		
+		Parameters
+		----------
+		state:          openmc.StatePoint with this Mesh_Group's tally results
+		zval:           float; z-value (cm) to find the closest layer's relative power
+						If it is exactly on a cut, the lower level will be returned.
+						[Default: None]
+		tally_id:       int; the id of the openmc.Tally to index into
+						[Default: None]
+		index:          int; the index of the layer within the Tally's Mesh
+						If `tally_id` is None, the index will refer to the layer
+						within the entire group.
+						[Default: None]
+		tally_total:    Boolean; whether to sum the entire Tally instead of
+						select a layer. If `tally_id` is None, all Tally instances
+						in the group will be summed.
+		eps:            tolerance for a tally to be considered 0 or NaN
+						[Default: 0]
+		
+		Returns:
+		--------
+		xyarray:        numpy.array containing the
+		"""
+		
+		self.__assert_nzs_dzs()
+
 
 def get_mesh_group_from_lattice(lattice, z0 = None):
 	"""Populate a Mesh_Group() instance with a lattice's
@@ -242,5 +270,3 @@ if __name__ == "__main__":
 	test_group.dzs = [3.866, 8.2111429, 3.81, 8.065, 3.81, 8.065, 3.81, 8.065, 3.81, 8.065, 3.81, 8.065, 3.81, 7.9212]
 	test_group.build_group()
 	print(test_group.meshes)
-
-
