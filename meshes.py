@@ -152,14 +152,15 @@ class Mesh_Group(object):
 				errstr = "Cannot cut {delta_z} cm into slices of {dz} cm.".format(**locals())
 				raise MeshError(errstr)
 		
-		new_mesh = openmc.Mesh(self._get_next_id())
+		new_id = self._get_next_id()
+		new_mesh = openmc.Mesh(new_id)
 		new_mesh.type = "regular"
 		new_mesh.lower_left = (self.x0, self.y0, self._z)
 		new_mesh.dimension = (self._nx, self._ny, nz)
 		new_mesh.width = (self._dx, self._dy, dz)
 		
-		new_filter = openmc.MeshFilter(new_mesh)
-		new_tally = openmc.Tally(self.id0)
+		new_filter = openmc.MeshFilter(new_mesh, new_id)
+		new_tally = openmc.Tally(new_id)
 		new_tally.filters = [new_filter]
 		new_tally.scores = ["fission"]
 		
@@ -205,7 +206,7 @@ class Mesh_Group(object):
 				xlist[k] = talvalsi[:, :, j].sum()/dz
 				k += 1
 		
-		xlist[xlist <= eps] = np.Nan
+		xlist[xlist <= eps] = np.NaN
 		xlist /= np.nanmean(xlist)
 		return xlist, zlist
 	
@@ -226,9 +227,9 @@ class Mesh_Group(object):
 		--------
 		xyarray:        numpy.array of the radial power profile
 		"""
-		tally = state.get_tally(tally_id)
+		tally = state.tallies[tally_id]
 		talvals = tally.get_values()
-		nz = len(talvals)/(self._nx*self._ny)
+		nz = len(talvals)//(self._nx*self._ny)
 		talvals.shape = (self._nx, self._ny, nz)
 		if index:
 			xyarray = talvals[:, :, index]
@@ -239,7 +240,7 @@ class Mesh_Group(object):
 		return xyarray
 		
 	
-	def get_tally_by_index(self, index):
+	def get_tally_id_by_index(self, index):
 		"""Given the index of a mesh cut in the group, find the Tally
 		that occurs at that index. If the mesh cut is between two tallies,
 		this method will return the lower one.
@@ -250,14 +251,14 @@ class Mesh_Group(object):
 		
 		Returns:
 		--------
-		tally:      openmc.Tally covering that index
+		id:         int; id of openmc.Tally covering that index
 		"""
 		total = 0
 		for i, j in enumerate(self._nzs):
 			total += j
 			if total >= index:
 				tally = self.tallies[i]
-				return tally
+				return tally.id
 		
 	def get_index_by_z(self, zval):
 		"""Given a z-value within the group, find the index
@@ -336,18 +337,22 @@ class Mesh_Group(object):
 					or tally id to find the power at."
 					raise MeshError(errstr)
 			else:
-				tally = self.get_tally_by_index(index)
+				tid = self.get_tally_id_by_index(index)
+				tally = state.tallies[tid]
 				for i in range(self.n):
 					if sum(self.nzs[:i+1]) >= index:
 						break
 				if i:
-					tally_index = index - sum(self.nzs[:i])
+					tally_index = index - sum(self.nzs[:i+1])
 				else:
 					tally_index = index
-				xyarray = tally.get_values()[:, :, tally_index]
+				talvals = tally.get_values()
+				nz = len(talvals)//(self._nx*self._ny)
+				talvals.shape = (self._nx, self._ny, nz)
+				xyarray = talvals[:, :, tally_index]
 		
 		# Replace things below the tolerance with NaNs before normalizing
-		xyarray[xyarray <= eps] = NaN
+		xyarray[xyarray <= eps] = np.NaN
 		xyarray /= np.nanmean(xyarray)
 		return xyarray
 
