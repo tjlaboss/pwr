@@ -52,6 +52,7 @@ class Mesh_Group(object):
 		self.x0, self.y0, self.z0 = lower_left
 		self._z = self.z0
 		self._id0 = id0
+		self._next_id = id0
 		self._nzs = None
 		self._dzs = None
 	
@@ -112,6 +113,11 @@ class Mesh_Group(object):
 				raise IndexError(_len_err_str)
 		self._dzs = dzs_in
 	
+	def _get_next_id(self):
+		nid = self._next_id
+		self._next_id += 1
+		return nid
+	
 	def __assert_nzs_dzs(self):
 		assert self._nzs.any(), "Mesh_group.nzs has not been set. Cannot get profile."
 		assert self._dzs.any(), "Mesh_group.dzs has not been set. Cannot get profile."
@@ -146,7 +152,7 @@ class Mesh_Group(object):
 				errstr = "Cannot cut {delta_z} cm into slices of {dz} cm.".format(**locals())
 				raise MeshError(errstr)
 		
-		new_mesh = openmc.Mesh(self.id0)
+		new_mesh = openmc.Mesh(self._get_next_id())
 		new_mesh.type = "regular"
 		new_mesh.lower_left = (self.x0, self.y0, self._z)
 		new_mesh.dimension = (self._nx, self._ny, nz)
@@ -160,7 +166,6 @@ class Mesh_Group(object):
 		self._meshes.append(new_mesh)
 		self._mesh_filters.append(new_filter)
 		self._tallies.append(new_tally)
-		self._id0 += 1
 		self._z = z1
 	
 	def build_group(self):
@@ -309,7 +314,6 @@ class Mesh_Group(object):
 		xyarray:        numpy.array containing the
 		"""
 		self.__assert_nzs_dzs()
-		#xyarray = np.zeros((self._nx, self._ny))
 		if zval and (index is None):
 			index = self.get_index_by_z(zval)
 		
@@ -319,29 +323,33 @@ class Mesh_Group(object):
 				 unless the total is desired".format(tally_id)
 				raise MeshError(errstr)
 			else:
-				return self.get_radial_power_by_tally(state, tally_id, index)
+				xyarray = self.get_radial_power_by_tally(state, tally_id, index)
 		else:
-			# Then we find the tally id
-			do_something = True
-		
-		'''
-		if tally_total and (zval, tally_id, index).all() is None:
-			# Then the user wants the total radial power
-			
-			for tally in state.tallies:
-				talvals = tally.get_values()
-				
-		elif zval and (index is None):
-			if tally_total:
-				# The user wants the
+			if (zval is None) and (index is None):
+				if tally_total:
+					# The entire profile is requested!
+					for i in range(self.n):
+						xyarray = np.zeros((self._nx, self._ny))
+						xyarray += self.get_radial_power_by_tally(state, tally_id = self.id0 + i)
+				else:
+					errstr = "You have not specified a z-value, index, \
+					or tally id to find the power at."
+					raise MeshError(errstr)
 			else:
-				# Then the user is looking for one layer
-				
+				tally = self.get_tally_by_index(index)
+				for i in range(self.n):
+					if sum(self.nzs[:i+1]) >= index:
+						break
+				if i:
+					tally_index = index - sum(self.nzs[:i])
+				else:
+					tally_index = index
+				xyarray = tally.get_values()[:, :, tally_index]
 		
-		else:
-			# TODO: Write a more helpful error message.
-			raise MeshError("Not enough information has been provided.")
-		'''
+		# Replace things below the tolerance with NaNs before normalizing
+		xyarray[xyarray <= eps] = NaN
+		xyarray /= np.nanmean(xyarray)
+		return xyarray
 
 
 def get_mesh_group_from_lattice(lattice, z0 = None):
