@@ -5,6 +5,7 @@
 import openmc
 import math
 
+_len_err_str = "The length of `nzs` must match the length of `dzs`."
 
 class MeshError(Exception):
 	""" Class for errors involving mesh structure. """
@@ -46,6 +47,8 @@ class Mesh_Group(object):
 		self.x0, self.y0, self.z0 = lower_left
 		self._z = self.z0
 		self._id0 = id0
+		self._nzs = None
+		self._dzs = None
 	
 	@property
 	def meshes(self):
@@ -72,15 +75,40 @@ class Mesh_Group(object):
 		return self._ny
 	
 	@property
-	# Unused?
-	def mesh_edges(self):
-		return self._mesh_edges
+	def nzs(self):
+		return self._nzs
+	
+	@property
+	def dzs(self):
+		return self._dzs
+	
+	@property
+	def n(self):
+		if self._dzs and self._nzs:
+			return len(self._nzs)
+		else:
+			return 0
 	
 	@property
 	def mesh_filters(self):
 		return self._mesh_filters
 	
 	
+	@nzs.setter
+	def nzs(self, nzs_in):
+		if self._dzs:
+			if len(nzs_in) != len(self._dzs):
+				raise IndexError(_len_err_str)
+		self._nzs = nzs_in
+	
+	@dzs.setter
+	def dzs(self, dzs_in):
+		if self._nzs:
+			if len(dzs_in) != len(self._nzs):
+				raise IndexError(_len_err_str)
+		self._dzs = dzs_in
+
+
 	def add_mesh(self, z1 = None, nz = None, dz = None):
 		"""Add a mesh to the group. You must supply two of the
 		three parameters. If all three are supplied,
@@ -127,25 +155,24 @@ class Mesh_Group(object):
 		self._tallies.append(new_tally)
 		self._id0 += 1
 		self._z = z1
+	
+	
+	def build_group(self):
+		"""Use the `nzs` and `dzs` attributes to autobuild the mesh group"""
+		assert self._nzs, "Mesh_group.nzs has not been set."
+		assert self._dzs, "Mesh_group.dzs has not been set."
+		for i in range(self.n):
+			self.add_mesh(nz = self._nzs[i], dz = self._dzs[i])
+	
 
 
 # Test
 if __name__ == "__main__":
 	
-	nzs = [1, 7, 1, 6, 1, 6, 1, 6, 1, 6, 1, 6, 1, 5]
-	dzs = [3.866, 8.2111429, 3.81, 8.065, 3.81, 8.065, 3.81, 8.065, 3.81, 8.065, 3.81, 8.065, 3.81, 7.9212]
-	assert len(nzs) == len(dzs), "Mismatch between the number of z values and z cuts"
-	n = len(nzs)
-	
 	test_group = Mesh_Group(1.26, 17, 17, lower_left = (-17/1.26, -17/1.26, 11.951))
-	
-	total = test_group.z0
-	for i in range(n):
-		nz = nzs[i]
-		dz = dzs[i]
-		test_group.add_mesh(nz = nz, dz = dz)
-		total += nz*dz
-		print(round(total, 5))
-	
+	test_group.nzs = [1, 7, 1, 6, 1, 6, 1, 6, 1, 6, 1, 6, 1, 5]
+	test_group.dzs = [3.866, 8.2111429, 3.81, 8.065, 3.81, 8.065, 3.81, 8.065, 3.81, 8.065, 3.81, 8.065, 3.81, 7.9212]
+	test_group.build_group()
+	print(test_group.meshes)
 
 
