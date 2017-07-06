@@ -172,12 +172,13 @@ class Mesh_Group(object):
 	
 	
 	# Post-processing methods
-	def get_axial_power(self, state):
+	def get_axial_power(self, state, eps = 0):
 		"""Get the axial power profile, suitable for plotting
 		
 		Parameters:
 		-----------
 		state:      openmc.StatePoint with this Mesh_Group's tallies
+		eps:        tolerance for a tally to be considered 0 or NaN
 		
 		Returns:
 		--------
@@ -200,8 +201,11 @@ class Mesh_Group(object):
 				xlist[k] = talvalsi[:, :, j].sum()/dz
 				k += 1
 		
-		xlist /= xlist.mean()
+		xlist[xlist <= eps] = np.Nan
+		xlist /= np.nanmean(xlist)
 		return xlist, zlist
+	
+	
 		
 
 def get_mesh_group_from_lattice(lattice, z0 = None):
