@@ -204,6 +204,82 @@ class Mesh_Group(object):
 		xlist /= np.nanmean(xlist)
 		return xlist, zlist
 	
+	
+	def get_radial_power_by_tally(self, state, tally_id, index = None):
+		"""Get the radial power of a specific tally with a known ID
+		
+		Parameters:
+		-----------
+		state:          openmc.StatePoint with this Mesh_Group's tally results
+		tally_id:       int; id of the desired openmc.Tally
+		index:          int; index of the z-layer within the Tally's mesh.
+						If the index is None, the sum of all the Tally's
+						layers will be returned.
+						[Default: None]
+		
+		Returns:
+		--------
+		xyarray:        numpy.array of the radial power profile
+		"""
+		tally = state.get_tally(tally_id)
+		talvals = tally.get_values()
+		nz = len(talvals)/(self._nx*self._ny)
+		talvals.shape = (self._nx, self._ny, nz)
+		if index:
+			xyarray = talvals[:, :, index]
+		else:
+			xyarray = np.zeros((self._nx, self._ny))
+			for i in range(nz):
+				xyarray += talvals[:, :, i]
+		return xyarray
+		
+	
+	def get_tally_by_index(self, index):
+		"""Given the index of a mesh cut in the group, find the Tally
+		that occurs at that index. If the mesh cut is between two tallies,
+		this method will return the lower one.
+		
+		Parameters:
+		-----------
+		index:      int; index of the mesh cut
+		
+		Returns:
+		--------
+		tally:      openmc.Tally covering that index
+		"""
+		total = 0
+		for i, j in enumerate(self._nzs):
+			total += j
+			if total >= index:
+				tally = self.tallies[i]
+				return tally
+		
+	def get_index_by_z(self, zval):
+		"""Given a z-value within the group, find the index
+		of the mesh cut at or above it.
+		
+		Parameters:
+		-----------
+		zval:       float; z-value (cm) of the desired mesh cut
+		
+		Returns:
+		--------
+		i:          int; index in the total group at, or
+					immediately above, zval
+		"""
+		self.__assert_nzs_dzs()
+		assert zval <= self._z, \
+			"The requested z-value is above the maximum: {} cm".format(self._z)
+		z = 0
+		for i in range(self.n):
+			nz = self._nzs[i]
+			dz = self._dzs[i]
+			for j in range(nz):
+				z += dz
+				if z >= zval:
+					return i
+			
+	
 	def get_radial_power(self, state, zval = None, tally_id = None,
 	                     index = None, tally_total = False, eps = 0):
 		"""Get the radial power profile
@@ -232,8 +308,40 @@ class Mesh_Group(object):
 		--------
 		xyarray:        numpy.array containing the
 		"""
-		
 		self.__assert_nzs_dzs()
+		#xyarray = np.zeros((self._nx, self._ny))
+		if zval and (index is None):
+			index = self.get_index_by_z(zval)
+		
+		if tally_id:
+			if (index is None) and (not tally_total):
+				errstr = "An index is required for tally {}\
+				 unless the total is desired".format(tally_id)
+				raise MeshError(errstr)
+			else:
+				return self.get_radial_power_by_tally(state, tally_id, index)
+		else:
+			# Then we find the tally id
+			do_something = True
+		
+		'''
+		if tally_total and (zval, tally_id, index).all() is None:
+			# Then the user wants the total radial power
+			
+			for tally in state.tallies:
+				talvals = tally.get_values()
+				
+		elif zval and (index is None):
+			if tally_total:
+				# The user wants the
+			else:
+				# Then the user is looking for one layer
+				
+		
+		else:
+			# TODO: Write a more helpful error message.
+			raise MeshError("Not enough information has been provided.")
+		'''
 
 
 def get_mesh_group_from_lattice(lattice, z0 = None):
