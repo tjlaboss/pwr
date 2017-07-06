@@ -3,7 +3,7 @@
 # Module for tally meshes
 
 import openmc
-import math
+import numpy as np
 
 _len_err_str = "The length of `nzs` must match the length of `dzs`."
 
@@ -18,6 +18,10 @@ class Mesh_Group(object):
 	with different z-pitches (dz).
 	
 	Meshes must be stacked sequentially.
+	
+	Note that "Another Mesh instance" and "Another Tally instance"
+	warnings are expected for each level if you are using this
+	class for post-processing a StatePoint.
 	
 	Parameters:
 	-----------
@@ -84,7 +88,7 @@ class Mesh_Group(object):
 	
 	@property
 	def n(self):
-		if self._dzs and self._nzs:
+		if (self._dzs is not None) and (self._nzs is not None):
 			return len(self._nzs)
 		else:
 			return 0
@@ -96,18 +100,21 @@ class Mesh_Group(object):
 	
 	@nzs.setter
 	def nzs(self, nzs_in):
-		if self._dzs:
+		if self._dzs is not None:
 			if len(nzs_in) != len(self._dzs):
 				raise IndexError(_len_err_str)
 		self._nzs = nzs_in
 	
 	@dzs.setter
 	def dzs(self, dzs_in):
-		if self._nzs:
+		if self._nzs.any():
 			if len(dzs_in) != len(self._nzs):
 				raise IndexError(_len_err_str)
 		self._dzs = dzs_in
 
+	def __assert_nzs_dzs(self):
+		assert self._nzs.any(), "Mesh_group.nzs has not been set. Cannot get profile."
+		assert self._dzs.any(), "Mesh_group.dzs has not been set. Cannot get profile."
 
 	def add_mesh(self, z1 = None, nz = None, dz = None):
 		"""Add a mesh to the group. You must supply two of the
@@ -133,7 +140,7 @@ class Mesh_Group(object):
 			z1 = self._z + nz*dz
 		elif dz and ztrue:
 			nz = int(round(z1/dz))
-			if not math.isclose(nz, z1/dz):
+			if not np.isclose(nz, z1/dz):
 				# Then there's no way to slice this up right
 				delta_z = z1 - self._z
 				errstr = "Cannot cut {delta_z} cm into slices of {dz} cm.".format(**locals())
