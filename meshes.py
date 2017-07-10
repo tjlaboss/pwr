@@ -276,7 +276,7 @@ class Mesh_Group(object):
 		self.__assert_nzs_dzs()
 		assert zval <= self._z, \
 			"The requested z-value is above the maximum: {} cm".format(self._z)
-		z = 0
+		z = self.z0
 		for i in range(self.n):
 			nz = self._nzs[i]
 			dz = self._dzs[i]
