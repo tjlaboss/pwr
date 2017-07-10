@@ -274,8 +274,8 @@ class Mesh_Group(object):
 					immediately above, zval
 		"""
 		self.__assert_nzs_dzs()
-		assert zval <= self._z, \
-			"The requested z-value is above the maximum: {} cm".format(self._z)
+		errstr = "The requested z-value is above the maximum: {} cm".format(self._z)
+		assert zval <= self._z, errstr
 		z = self.z0
 		for i in range(self.n):
 			nz = self._nzs[i]
@@ -315,8 +315,12 @@ class Mesh_Group(object):
 		xyarray:        numpy.array containing the
 		"""
 		self.__assert_nzs_dzs()
-		if zval and (index is None):
+		if (zval is not None) and (index is None):
 			index = self.get_index_by_z(zval)
+		
+		max_i = sum(self._nzs)
+		errstr = "Index {} out of {} does not exist".format(index, max_i)
+		assert index <= max_i, errstr
 		
 		if tally_id:
 			if (index is None) and (not tally_total):
