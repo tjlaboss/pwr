@@ -211,7 +211,7 @@ class MeshGroup(object):
 		xlist /= np.nanmean(xlist)
 		return xlist, zlist
 	
-	def get_radial_power_by_tally(self, state, tally_id, index=None):
+	def get_radial_power_by_tally(self, state, tally_id, index=None, eps=0):
 		"""Get the radial power of a specific tally with a known ID
 		
 		Parameters:
@@ -222,7 +222,7 @@ class MeshGroup(object):
 						If the index is None, the sum of all the Tally's
 						layers will be returned.
 						[Default: None]
-		
+
 		Returns:
 		--------
 		xyarray:        numpy.array of the radial power profile
@@ -230,13 +230,15 @@ class MeshGroup(object):
 		tally = state.tallies[tally_id]
 		talvals = tally.get_values()
 		nz = len(talvals)//(self._nx*self._ny)
-		talvals.shape = (self._nx, self._ny, nz)
+		talvals.shape = (nz, self._ny, self._nx)
+		talvals = np.flip(talvals, 1)
 		if index:
-			xyarray = talvals[:, :, index]
+			xyarray = talvals[index, :, :]
 		else:
-			xyarray = np.zeros((self._nx, self._ny))
+			xyarray = np.zeros((self._ny, self._nx))
 			for i in range(nz):
-				xyarray += talvals[:, :, i]
+				xyarray += talvals[i, :, :]
+		xyarray[xyarray <= eps] = np.NaN
 		return xyarray
 	
 	def get_tally_id_by_index(self, index):
