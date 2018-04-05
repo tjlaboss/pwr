@@ -4,6 +4,7 @@
 
 import openmc
 import numpy as np
+from copy import deepcopy
 
 _len_err_str = "The length of `nzs` must match the length of `dzs`."
 
@@ -13,7 +14,7 @@ class MeshError(Exception):
 	pass
 
 
-class Mesh_Group(object):
+class MeshGroup(object):
 	"""Container for multiple uniform meshes to cover a 3D assembly.
 	Must have the same (x, y) pitch, but may have multiple layers
 	with different z-pitches (dz).
@@ -37,7 +38,7 @@ class Mesh_Group(object):
 					[Default: 1]
 	"""
 	
-	def __init__(self, pitch, nx, ny, lower_left = (0.0, 0.0, 0.0), id0 = 1):
+	def __init__(self, pitch, nx, ny, lower_left=(0.0, 0.0, 0.0), id0=1):
 		if isinstance(pitch, (int, float)):
 			self._dx, self._dy = pitch, pitch
 		elif len(pitch) in (2, 3):
@@ -122,7 +123,7 @@ class Mesh_Group(object):
 		assert self._nzs.any(), "Mesh_group.nzs has not been set. Cannot get profile."
 		assert self._dzs.any(), "Mesh_group.dzs has not been set. Cannot get profile."
 	
-	def add_mesh(self, z1 = None, nz = None, dz = None):
+	def add_mesh(self, z1=None, nz=None, dz=None):
 		"""Add a mesh to the group. You must supply two of the
 		three parameters. If all three are supplied,
 		`dz` will be ignored.
@@ -173,10 +174,10 @@ class Mesh_Group(object):
 		"""Use the `nzs` and `dzs` attributes to autobuild the mesh group"""
 		self.__assert_nzs_dzs()
 		for i in range(self.n):
-			self.add_mesh(nz = self._nzs[i], dz = self._dzs[i])
+			self.add_mesh(nz=self._nzs[i], dz=self._dzs[i])
 	
 	# Post-processing methods
-	def get_axial_power(self, state, eps = 0):
+	def get_axial_power(self, state, eps=0):
 		"""Get the axial power profile, suitable for plotting
 		
 		Parameters:
@@ -198,7 +199,7 @@ class Mesh_Group(object):
 		for i in range(self.n):
 			nz = self._nzs[i]
 			dz = self._dzs[i]
-			talvalsi = state.get_tally(id = i + 1).get_values()
+			talvalsi = state.get_tally(id=i + 1).get_values()
 			talvalsi.shape = (self._nx, self._ny, nz)
 			for j in range(nz):
 				z += dz
@@ -210,8 +211,7 @@ class Mesh_Group(object):
 		xlist /= np.nanmean(xlist)
 		return xlist, zlist
 	
-	
-	def get_radial_power_by_tally(self, state, tally_id, index = None):
+	def get_radial_power_by_tally(self, state, tally_id, index=None, eps=0):
 		"""Get the radial power of a specific tally with a known ID
 		
 		Parameters:
@@ -222,7 +222,7 @@ class Mesh_Group(object):
 						If the index is None, the sum of all the Tally's
 						layers will be returned.
 						[Default: None]
-		
+
 		Returns:
 		--------
 		xyarray:        numpy.array of the radial power profile
@@ -230,15 +230,16 @@ class Mesh_Group(object):
 		tally = state.tallies[tally_id]
 		talvals = tally.get_values()
 		nz = len(talvals)//(self._nx*self._ny)
-		talvals.shape = (self._nx, self._ny, nz)
+		talvals.shape = (nz, self._ny, self._nx)
+		talvals = np.flip(talvals, 1)
 		if index:
-			xyarray = talvals[:, :, index]
+			xyarray = talvals[index, :, :]
 		else:
-			xyarray = np.zeros((self._nx, self._ny))
+			xyarray = np.zeros((self._ny, self._nx))
 			for i in range(nz):
-				xyarray += talvals[:, :, i]
+				xyarray += talvals[i, :, :]
+		xyarray[xyarray <= eps] = np.NaN
 		return xyarray
-		
 	
 	def get_tally_id_by_index(self, index):
 		"""Given the index of a mesh cut in the group, find the Tally
@@ -259,7 +260,7 @@ class Mesh_Group(object):
 			if total >= index:
 				tally = self.tallies[i]
 				return tally.id
-		
+	
 	def get_index_by_z(self, zval):
 		"""Given a z-value within the group, find the index
 		of the mesh cut at or above it.
@@ -284,10 +285,9 @@ class Mesh_Group(object):
 				z += dz
 				if z >= zval:
 					return i
-			
 	
-	def get_radial_power(self, state, zval = None, tally_id = None,
-	                     index = None, tally_total = False, eps = 0):
+	def get_radial_power(self, state, zval=None, tally_id=None,
+	                     index=None, tally_total=False, eps=0):
 		"""Get the radial power profile
 		
 		You must specify `zval`, `index`, or `tally_total`.
@@ -324,8 +324,8 @@ class Mesh_Group(object):
 		
 		if tally_id:
 			if (index is None) and (not tally_total):
-				errstr = "An index is required for tally {}\
-				 unless the total is desired".format(tally_id)
+				errstr = "An index is required for tally {} "
+				"unless the total is desired".format(tally_id)
 				raise MeshError(errstr)
 			else:
 				xyarray = self.get_radial_power_by_tally(state, tally_id, index)
@@ -335,19 +335,19 @@ class Mesh_Group(object):
 					# The entire profile is requested!
 					for i in range(self.n):
 						xyarray = np.zeros((self._nx, self._ny))
-						xyarray += self.get_radial_power_by_tally(state, tally_id = self.id0 + i)
+						xyarray += self.get_radial_power_by_tally(state, tally_id=self.id0 + i)
 				else:
-					errstr = "You have not specified a z-value, index, \
-					or tally id to find the power at."
+					errstr = "You have not specified a z-value, index, "
+					"or tally id to find the power at."
 					raise MeshError(errstr)
 			else:
 				tid = self.get_tally_id_by_index(index)
 				tally = state.tallies[tid]
 				for i in range(self.n):
-					if sum(self.nzs[:i+1]) >= index:
+					if sum(self.nzs[:i + 1]) >= index:
 						break
 				if i:
-					tally_index = index - sum(self.nzs[:i+1])
+					tally_index = index - sum(self.nzs[:i + 1])
 				else:
 					tally_index = index
 				talvals = tally.get_values()
@@ -361,7 +361,7 @@ class Mesh_Group(object):
 		return xyarray
 
 
-def get_mesh_group_from_lattice(lattice, z0 = None):
+def get_mesh_group_from_lattice(lattice, z0=None):
 	"""Populate a Mesh_Group() instance with a lattice's
 	size, pitch, and lower left.
 	
@@ -383,14 +383,14 @@ def get_mesh_group_from_lattice(lattice, z0 = None):
 		ll = deepcopy(lattice.lower_left)
 	else:
 		ll = (lattice.lower_left[0], lattice.lower_left[1], z0)
-	new_group = Mesh_Group(p, nx, ny, ll)
+	new_group = MeshGroup(p, nx, ny, ll)
 	return new_group
 
 
 # Test
 if __name__ == "__main__":
 	
-	test_group = Mesh_Group(1.26, 17, 17, lower_left = (-17/1.26, -17/1.26, 11.951))
+	test_group = MeshGroup(1.26, 17, 17, lower_left=(-17/1.26, -17/1.26, 11.951))
 	test_group.nzs = [1, 7, 1, 6, 1, 6, 1, 6, 1, 6, 1, 6, 1, 5]
 	test_group.dzs = [3.866, 8.2111429, 3.81, 8.065, 3.81, 8.065, 3.81, 8.065, 3.81, 8.065, 3.81, 8.065, 3.81, 7.9212]
 	test_group.build_group()
