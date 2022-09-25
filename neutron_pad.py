@@ -124,16 +124,16 @@ class Neutron_Pads(object):
 					if p2:
 						p0 = p2
 					else:
-						p0 = openmc.Plane(self.counter.add_surface(), A = a(th0), B = b(th0))
+						p0 = openmc.Plane(a(th0), b(th0), surface_id=self.counter.add_surface())
 						self.planes.append(p0)
-					p1 = openmc.Plane(self.counter.add_surface(), A = a(th1), B = b(th1))
+					p1 = openmc.Plane(a(th1), b(th1), surface_id=self.counter.add_surface())
 				else:
 					if p2:
 						p0 = p2
 					else:
-						p0 = openmc.Plane(A = a(th0), B = b(th0))
+						p0 = openmc.Plane(a(th0), b(th0))
 						self.planes.append(p0)
-					p1 = openmc.Plane(A = a(th1), B = b(th1))
+					p1 = openmc.Plane(a(th1), b(th1))
 				self.planes.append(p1)
 				
 				# Create the cell for the i^th pad itself
@@ -147,10 +147,10 @@ class Neutron_Pads(object):
 				# Create the cell between this and the next pad
 				th2 = th0 + theta
 				if self.counter:
-					p2 = openmc.Plane(self.counter.add_surface(), A = a(th2), B = b(th2))
+					p2 = openmc.Plane(a(th2), b(th2), surface_id=self.counter.add_surface())
 					new_space = openmc.Cell(self.counter.add_cell())
 				else:
-					p2 = openmc.Plane(A = a(th2), B = b(th2))
+					p2 = openmc.Plane(a(th2), b(th2))
 					new_space = openmc.Cell()
 				new_space.region = self.region & +p2 & -p1
 				new_space.fill = self.mod
