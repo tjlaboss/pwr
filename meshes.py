@@ -154,7 +154,7 @@ class MeshGroup(object):
 				raise MeshError(errstr)
 		
 		new_id = self._get_next_id()
-		new_mesh = openmc.Mesh(new_id)
+		new_mesh = openmc.RegularMesh(new_id)
 		new_mesh.type = "regular"
 		new_mesh.lower_left = (self.x0, self.y0, self._z)
 		new_mesh.dimension = (self._nx, self._ny, nz)

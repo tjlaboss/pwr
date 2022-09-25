@@ -1,9 +1,9 @@
 # Module for smeared materials (mixtures)
 
-from openmc import Material
+from openmc import Material, NuclideTuple
 
 class Mixture(Material):
-	'''Mixture of multiple OpenMC materials.
+	"""Mixture of multiple OpenMC materials.
 	Designed to be functionally identical to a regular openmc.Material,
 	but defined differently.
 	
@@ -16,7 +16,7 @@ class Mixture(Material):
 	
 	materials:		list of instances of openmc.Material to mix
     vfracs:			list of floats describing the volume fraction of each
-    				Material listed above.  
+    				Material listed above.
     
     material_id:	int, optional
         Unique identifier for the material. If not specified, an identifier will
@@ -45,34 +45,23 @@ class Mixture(Material):
         :class:`openmc.Nuclide` instance, the percent density, and the percent
         type ('ao' or 'wo').
 	
-	'''
+	"""
 	
 	def __init__(self, materials, vfracs, material_id = None, frac_type = 'wo', name = ""):
 		super(Mixture, self).__init__(material_id, name)
-		
-		mix_isos = []
+		mix_nuclides = {}
 		density = 0.0
-	
+		sentinel = NuclideTuple("", 0, frac_type)
 		for i in range(len(materials)):
 			density += materials[i].density * (vfracs[i] / sum(vfracs))
 		for i in range(len(materials)):
 			mat = materials[i]
 			#mat.convert_ao_to_wo() --> Exists in VERA-to-OpenMC, but not here
 			wtf = vfracs[i]*mat.density 	# weight fraction of entire material
-			for iso in mat.nuclides:
-				nuclide = iso[0]
-				new_wt = wtf*iso[1] / density
-				if iso in mix_isos:
-					old_wt = mix_isos[iso][1]
-					mix_isos.append((nuclide, new_wt + old_wt, frac_type))
-				else:
-					mix_isos.append((nuclide, new_wt, frac_type))
-					
-		self._nuclides = mix_isos
+			for (nucname, nucfrac, _) in mat.nuclides:
+				new_wt = wtf*nucfrac / density
+				old_wt = mix_nuclides.get(nucname, sentinel)[1]
+				mix_nuclides[nucname] = NuclideTuple(nucname, new_wt + old_wt, frac_type)
+		self._nuclides = list(mix_nuclides.values())
 		self.set_density("g/cc", density)
-	
-		
-if __name__ == "__main__":
-	print("This is a module for Mixture(), a child class of openmc.Material.")
-	
 	

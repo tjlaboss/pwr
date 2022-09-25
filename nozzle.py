@@ -5,10 +5,10 @@
 from pwr.mixture import Mixture
 
 
-class Nozzle(object):
-	'''Nozzle defined as a smeared material of a certain height and mass
+class Nozzle:
+	"""Nozzle defined as a smeared material of a certain height and mass
 	
-	Parameters:
+	Parameters
 		height:		float; z-coordinate of the top of this nozzle.
 					The coordinate of the bottom is determined automatically.
 		mass:		float; mass in grams of nozzle material
@@ -19,13 +19,13 @@ class Nozzle(object):
 		counter:	instance of pwr.Counter needed to keep track of the material IDs
 		[name:		string; optional name for the nozzle material. Default is "nozzle-material".]
 	
-	Attributes:
+	Attributes
 		height:		[same as above]
 		mass:		[same as above]
 		material:	instance of openmc.Material; smearing of nozzle_mat and mod_mat
-	'''
+	"""
 	
-	def __init__(self, height, mass, nozzle_mat, mod_mat, npins, pitch, counter, name = "nozzle-material"):
+	def __init__(self, height, mass, nozzle_mat, mod_mat, npins, pitch, counter, name="nozzle-material"):
 		self.height = height
 		self.mass = mass
 		self.name = name
@@ -34,28 +34,27 @@ class Nozzle(object):
 		self.material = self.__mix(nozzle_mat, mod_mat, volume)
 		
 	def __mix(self, mat, mod, v):
-		'''Mix materials in the way necessary to create the nozzle.
+		"""Mix materials in the way necessary to create the nozzle.
 		
 		WARNING: Currently only supports the same type of fraction (weight or atomic)
 		
-		Inputs:
+		Parameters
 			mat:	instance of openmc.Material describing the nozzle composition
 			mod:	instance of openmc.Material describing the moderator
 			v:		float; total volume in cm^3 of the nozzle region
 		
-		Output:
+		Returns
 			mix:	instance of openmc.Material describing the smearing of 'mat' and 'mod'
-		'''
+		"""
 		mat_vol = self.mass / mat.density
 		mod_vol = v - mat_vol
 		vfracs = [mat_vol / v, mod_vol / v]
-		
-		material = Mixture((mat, mod), vfracs, name = self.name, material_id = self.counter.add_material())
+		material = Mixture((mat, mod), vfracs, name=self.name, material_id=self.counter.add_material())
 		return material
 	
 	
 	def get_nozzle_material(self):
-		'''Return the smeared material created during the construction of the nozzle.'''
+		"""Return the smeared material created during the construction of the nozzle."""
 		return self.material
 		
 	def __str__(self):

@@ -65,13 +65,13 @@ def get_surface(counter, surfdict, dim, coeff, name = "", rd = 5):
 	else:
 		# Generate it
 		if dim in ("x", "xp", "xplane"):
-			openmc_surf = openmc.XPlane(counter.add_surface(), x0 = coeff, name = name)
+			openmc_surf = openmc.XPlane(surface_id=counter.add_surface(), x0=coeff, name=name)
 		elif dim in ("y", "yp", "yplane"):
-			openmc_surf = openmc.YPlane(counter.add_surface(), y0 = coeff, name = name)
+			openmc_surf = openmc.YPlane(surface_id=counter.add_surface(), y0=coeff, name=name)
 		elif dim in ("z", "zp", "zplane"):
-			openmc_surf = openmc.ZPlane(counter.add_surface(), z0 = coeff, name = name)
+			openmc_surf = openmc.ZPlane(surface_id=counter.add_surface(), z0=coeff, name=name)
 		elif dim in ("r", "cyl", "cylinder", "zcylinder"):
-			openmc_surf = openmc.ZCylinder(counter.add_surface(), R = coeff, name = name)
+			openmc_surf = openmc.ZCylinder(surface_id=counter.add_surface(), r=coeff, name=name)
 		else:
 			errstr = "'dim' must be 'xplane', 'yplane', 'zplane', or 'zcylinder'"
 			raise AssertionError(errstr)
